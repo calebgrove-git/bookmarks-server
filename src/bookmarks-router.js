@@ -32,11 +32,13 @@ bookmarksRouter
       .json(bookmark);
   });
 bookmarksRouter
-  .route('/bookmarks/:bookmark_id')
+  .route('/bookmarks/:bookmarkId')
   .get((req, res) => {
     const { bookmarkId } = req.params;
 
-    const bookmark = store.bookmarks.find((i) => i.id == bookmarkId);
+    const bookmark = store.bookmarks.find(
+      (bookmark) => bookmark.id == bookmarkId
+    );
 
     if (!bookmark) {
       logger.error(`Bookmark with id ${bookmarkId} not found.`);
@@ -51,13 +53,13 @@ bookmarksRouter
     const bookmarkIndex = store.bookmarks.findIndex((i) => i.id === bookmarkId);
 
     if (bookmarkIndex === -1) {
-      logger.error(`Bookmark with id ${bookmark_id} not found.`);
+      logger.error(`Bookmark with id ${bookmarkId} not found.`);
       return res.status(404).send('Bookmark Not Found');
     }
 
     store.bookmarks.splice(bookmarkIndex, 1);
 
-    logger.info(`Bookmark with id ${bookmark_id} deleted.`);
+    logger.info(`Bookmark with id ${bookmarkId} deleted.`);
     res.status(204).end();
   });
 
