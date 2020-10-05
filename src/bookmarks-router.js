@@ -1,15 +1,20 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const logger = require('./logger');
-const store = require('./STORE');
+const BookmarksService = require('./bookmarks-service');
 
 const bookmarksRouter = express.Router();
 const bodyParser = express.json();
 
 bookmarksRouter
   .route('/bookmarks')
-  .get((req, res) => {
-    res.json(store);
+  .get((req, res, next) => {
+    const knexInstance = req.app.get('db');
+    BookmarksService.getAllBookmarks(knexInstance)
+      .then((bookmarks) => {
+        res.json(bookmarks);
+      })
+      .catch(next);
   })
   .post(bodyParser, (req, res) => {
     const { title, url, description, rating } = req.body;
@@ -31,36 +36,18 @@ bookmarksRouter
       .location(`http://localhost:8000/bookmarks/${bookmark.id}`)
       .json(bookmark);
   });
-bookmarksRouter
-  .route('/bookmarks/:bookmarkId')
-  .get((req, res) => {
-    const { bookmarkId } = req.params;
-
-    const bookmark = store.bookmarks.find(
-      (bookmark) => bookmark.id == bookmarkId
-    );
-
-    if (!bookmark) {
-      logger.error(`Bookmark with id ${bookmarkId} not found.`);
-      return res.status(404).send('Bookmark Not Found');
-    }
-
-    res.json(bookmark);
-  })
-  .delete((req, res) => {
-    const { bookmarkId } = req.params;
-
-    const bookmarkIndex = store.bookmarks.findIndex((i) => i.id === bookmarkId);
-
-    if (bookmarkIndex === -1) {
-      logger.error(`Bookmark with id ${bookmarkId} not found.`);
-      return res.status(404).send('Bookmark Not Found');
-    }
-
-    store.bookmarks.splice(bookmarkIndex, 1);
-
-    logger.info(`Bookmark with id ${bookmarkId} deleted.`);
-    res.status(204).end();
-  });
+bookmarksRouter.route('/bookmarks/:id').get((req, res, next) => {
+  const knexInstance = req.app.get('db');
+  BookmarksService.getById(knexInstance, req.params.id)
+    .then((article) => {
+      if (!article) {
+        return res.status(404).json({
+          error: { message: `Bookmark Not Found` },
+        });
+      }
+      res.json(article);
+    })
+    .catch(next);
+});
 
 module.exports = bookmarksRouter;
