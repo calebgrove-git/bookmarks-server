@@ -4,4 +4,7 @@ module.exports = {
   API_TOKEN: process.env.API_TOKEN || 'token',
   DB_URL:
     process.env.DB_URL || 'postgresql://dunder_mifflin@localhost/bookmarks',
+  TEST_DB_URL:
+    process.env.TEST_DB_URL ||
+    'postgresql://dunder_mifflin@localhost/bookmarks-test',
 };
