@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const { v4: uuid } = require('uuid');
 const logger = require('./logger');
 const BookmarksService = require('./bookmarks-service');
@@ -14,7 +15,7 @@ const serializeBookmark = (bookmark) => ({
   description: xss(bookmark.description),
 });
 bookmarksRouter
-  .route('/bookmarks')
+  .route('/api/bookmarks')
   .get((req, res, next) => {
     const knexInstance = req.app.get('db');
     BookmarksService.getAllBookmarks(knexInstance)
@@ -53,13 +54,13 @@ bookmarksRouter
         logger.info(`Bookmark with id ${bookmark.id} created.`);
         res
           .status(201)
-          .location(`/bookmarks/${bookmark.id}`)
+          .location(req.originalUrl + `/${bookmark.id}`)
           .json(serializeBookmark(bookmark));
       })
       .catch(next);
   });
 bookmarksRouter
-  .route('/bookmarks/:id')
+  .route('/api/bookmarks/:id')
   .get((req, res, next) => {
     const knexInstance = req.app.get('db');
     BookmarksService.getById(knexInstance, req.params.id)
@@ -85,6 +86,54 @@ bookmarksRouter
           });
         }
         logger.info(`Bookmark with id ${id} deleted.`);
+        res.status(204).end();
+      })
+      .catch(next);
+  })
+  .patch(bodyParser, (req, res, next) => {
+    const { title, url, description, rating } = req.body;
+    const bookmarkToUpdate = { title, url, description, rating };
+
+    const numberOfValues = Object.values(bookmarkToUpdate).filter(Boolean)
+      .length;
+    if (numberOfValues === 0) {
+      logger.error(`Invalid update without required fields`);
+      return res.status(400).json({
+        error: {
+          message: `Request body must content either 'title', 'url', 'description' or 'rating'`,
+        },
+      });
+    }
+
+    if (rating && (!Number.isInteger(rating) || rating < 0 || rating > 5)) {
+      logger.error(`Invalid rating '${rating}' supplied`);
+      return res.status(400).json({
+        error: {
+          message: `'rating' must be a number between 0 and 5`,
+        },
+      });
+    }
+
+    if (url && !isWebUri(url)) {
+      logger.error(`Invalid url '${url}' supplied`);
+      return res.status(400).json({
+        error: {
+          message: `'url' must be a valid URL`,
+        },
+      });
+    }
+
+    BookmarksService.updateBookmark(
+      req.app.get('db'),
+      req.params.id,
+      bookmarkToUpdate
+    )
+      .then((bookmark) => {
+        if (!bookmark) {
+          return res
+            .status(404)
+            .json({ error: { message: 'Bookmark Not Found' } });
+        }
         res.status(204).end();
       })
       .catch(next);
